@@ -1,0 +1,36 @@
+'use strict';
+
+const { runForGameEte } = require('./0-common.js');
+
+runForGameEte('index.html', '夜永 Eternal Love', [
+    'ch000.ks',
+    'ch00.ks',
+    'ch01.ks',
+    'ch01b.ks',
+    'ch02.ks',
+    'ch02b.ks',
+    'ch03.ks',
+    'ch03b.ks',
+    'ch04.ks',
+    'ch04b.ks',
+    'ch05.ks',
+    'ch05b.ks',
+    'ch06.ks',
+    'ch06b.ks',
+    'ch07.ks',
+    'ch07b.ks',
+    'ch08.ks',
+    'ch08b.ks',
+    'ch09.ks',
+    'ch09b.ks',
+    'ch10.ks',
+    'ch10b.ks',
+    'ch11.ks',
+    'ch11b.ks',
+    'ch12.ks',
+    'ch12b.ks',
+    'end1.ks',
+    'end2.ks',
+    'end3.ks',
+    'ch20.ks',
+]);

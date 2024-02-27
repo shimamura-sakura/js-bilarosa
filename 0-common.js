@@ -1,6 +1,7 @@
 
 const fs = require('fs');
 const crypto = require('crypto');
+const { table } = require('console');
 
 const K_JUMP = '跳转';
 const K_COND = '条件';
@@ -29,31 +30,25 @@ function encryptScriptName(storage) {
     return encryptFilename('script/' + storage.replace('.ks', '.json'));
 }
 
-function loadScriptFile(storage) {
-    const fullpath = encryptScriptName(storage);
-    const filedata = fs.readFileSync(fullpath, { encoding: 'utf-8' });
-    return JSON.parse(filedata);
-}
-
 function fmtAnchorName(storage, target) {
     return `${storage}-${target}`.replace(/\*/g, '.');
 }
 
-function fmtLabel(storage, arg) {
-    const { id, title } = arg;
+function fmtLabel(storage, id, title) {
     const text = `(${storage}) ${id}${title && ' ' + title || ''}`;
     return `<a name="${fmtAnchorName(storage, id)}">${text}</a>`;
 }
 
 function fmtJump(storage, arg) {
-    const { target, storage: targetStorage } = arg;
+    let { target, storage: targetStorage } = arg;
+    if (targetStorage) targetStorage = targetStorage.replace('.ss', '.ks'); // for eternal love
     const textStorage = targetStorage || `(${storage})`;
     const text = `${textStorage} ${target}`;
     return `<a href="#${fmtAnchorName(targetStorage || storage, target)}">${text}</a>`;
 }
 
 function fmtChoices(storage, choices) {
-    return choices.map(arg => fmtJump(storage, arg)).join('<br/>');
+    return choices.map(arg => arg.text + fmtJump(storage, arg)).join('<br/>');
 }
 
 function fmtVOEncryptedName(vo) {
@@ -72,13 +67,13 @@ function fmtExpression(exp) {
     return `<div class="exp">${escapeHtml(exp)}</div>`;
 }
 
-function scriptToHTML(data, storage) {
+function symmel_scriptToHTML(data, storage) {
     const tableRows = [];
     let dialogArg = {};
     let selChoices = [];
     for (const [opcode, seqnum, subop, arg] of data) switch (opcode) {
         case 0: // def label
-            tableRows.push([seqnum, K_LABEL, fmtLabel(storage, arg)]);
+            tableRows.push([seqnum, K_LABEL, fmtLabel(storage, arg.id, arg.title)]);
             break;
         case 1: // jmp label
             tableRows.push([seqnum, K_JUMP, fmtJump(storage, arg)]);
@@ -100,7 +95,7 @@ function scriptToHTML(data, storage) {
             break;
         case 51: // if blocks
             for (const [cond, subscript] of arg['']) tableRows.push([seqnum, K_COND,
-                [fmtExpression(cond), '<br/>', scriptToHTML(subscript, storage)].join('')
+                [fmtExpression(cond), '<br/>', symmel_scriptToHTML(subscript, storage)].join('')
             ]);
             break;
     }
@@ -109,12 +104,62 @@ function scriptToHTML(data, storage) {
         '</table>'].join('');
 }
 
-function storageToHTML(storage) {
-    const data = loadScriptFile(storage);
-    return scriptToHTML(data, storage);
+function symmel_storageToHTML(storage) {
+    const fullpath = encryptScriptName(storage);
+    const filedata = fs.readFileSync(fullpath, { encoding: 'utf-8' });
+    const data = JSON.parse(filedata);
+    return symmel_scriptToHTML(data, storage);
 }
 
-function runForGameSymMel(outfile, gamename, scriptFiles) {
+function ete_scriptToHTML(data, storage) {
+    const tableRows = [];
+    let dialogArg = {};
+    let selChoices = [];
+    for (const [opcode, aObj, ...aArr] of data) switch (opcode) {
+        case 0: // label
+            tableRows.push(['', K_LABEL, fmtLabel(storage, aArr[0], aObj.title)]);
+            break;
+        case 8: // dialog line
+            tableRows.push(fmtDialogRow(aArr[1], dialogArg, aArr[0]));
+            dialogArg = {};
+            break;
+        case 60: switch (aObj['']) {
+            case 'npc': dialogArg.npc = aObj.id; break;
+            case 'vo': dialogArg.vo = aObj.storage; break;
+            case 'selstart': selChoices.length = 0; break;
+            case 'selbutton': selChoices.push(aObj); break;
+            case 'selend': tableRows.push(['', K_SELS, fmtChoices(storage, selChoices)]); break;
+            case 'showwd': tableRows.push(fmtDialogRow('', dialogArg, aObj.text)); dialogArg = {}; break;
+        } break;
+        case 63:
+            tableRows.push([K_COND, 'IF', fmtExpression(aArr[0])]);
+            break;
+        case 64:
+            tableRows.push([K_COND, 'ELIF', fmtExpression(aArr[0])]);
+            break;
+        case 65:
+            tableRows.push([K_COND, 'ENDIF', fmtExpression(aArr[0])]);
+            break;
+        case 69:
+            tableRows.push(['', K_EXPR, fmtExpression(aArr[0])]);
+            break;
+        case 201:
+            tableRows.push(['', K_JUMP, fmtJump(storage, aObj)]);
+            break;
+    };
+    return ['<table>',
+        tableRows.map(row => '<tr><td>' + row.join('</td><td>') + '</td></tr>').join(''),
+        '</table>'].join('');
+}
+
+function ete_storageToHTML(storage) {
+    const fullpath = encryptScriptName(storage);
+    const filedata = fs.readFileSync(fullpath);
+    const data = JSON.parse(new TextDecoder('utf-16le', { ignoreBOM: false }).decode(filedata));
+    return ete_scriptToHTML(data, storage);
+}
+
+function createHTML(outfile, gamename, scriptFiles, storageToHTMLFunc) {
     const outputHTML = fs.createWriteStream(outfile, { encoding: 'utf-8' });
     outputHTML.write(`<!DOCTYPE html>
 <html>
@@ -207,7 +252,7 @@ function runForGameSymMel(outfile, gamename, scriptFiles) {
     <audio id="voplayer" controls style="display: none;"></audio>`);
     for (const scriptFile of scriptFiles) {
         outputHTML.write(`<div>${TXT_FILE}: ${scriptFile} (${encryptScriptName(scriptFile)})`);
-        outputHTML.write(storageToHTML(scriptFile));
+        outputHTML.write(storageToHTMLFunc(scriptFile));
     }
     outputHTML.write(`<script>
         let ao = document.getElementById('voplayer');
@@ -224,4 +269,11 @@ function runForGameSymMel(outfile, gamename, scriptFiles) {
     outputHTML.close();
 }
 
-module.exports = { runForGameSymMel };
+module.exports = {
+    runForGameSymMel(outfile, gamename, scriptFiles) {
+        return createHTML(outfile, gamename, scriptFiles, symmel_storageToHTML);
+    },
+    runForGameEte(outfile, gamename, scriptFiles) {
+        return createHTML(outfile, gamename, scriptFiles, ete_storageToHTML);
+    }
+};
