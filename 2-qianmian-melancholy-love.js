@@ -1,0 +1,35 @@
+'use strict';
+
+const { runForGameSymMel } = require('./0-common.js');
+
+runForGameSymMel('index.html', '千面 Melancholy Love', [
+    'qianmian01.ks',
+    'qianmian02.ks',
+    'qianmian03.ks',
+    'qianmian04.ks',
+    'qianmian05.ks',
+    'qianmian06.ks',
+    'qianmian07.ks',
+    'qianmian08.ks',
+    'qianmian09.ks',
+    'qianmian10.ks',
+    'qianmian11.ks',
+    'qianmian12.ks',
+    'qianmian13.ks',
+    'qianmian14.ks',
+    'qianmian15.ks',
+    'qianmian16.ks',
+    'qianmian17.ks',
+    'qianmian18.ks',
+    'qianmian19.ks',
+    'qianmian20.ks',
+    'qianmian21.ks',
+    'qianmian22.ks',
+    'qianmian23.ks',
+    'qianmian24.ks',
+    'qianmian25.ks',
+    'qianmian26.ks',
+    'qianmian27.ks',
+    'qianmian28.ks',
+    'qianmian29.ks',
+]);
