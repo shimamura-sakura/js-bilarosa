@@ -138,7 +138,7 @@ function ete_scriptToHTML(data, storage) {
             tableRows.push([K_COND, 'ELIF', fmtExpression(aArr[0])]);
             break;
         case 65:
-            tableRows.push([K_COND, 'ENDIF', fmtExpression(aArr[0])]);
+            tableRows.push([K_COND, 'ENDIF', '']);
             break;
         case 69:
             tableRows.push(['', K_EXPR, fmtExpression(aArr[0])]);
